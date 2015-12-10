@@ -35,7 +35,7 @@
           # TODO Update these values if the FSS being used for CI changes
           san_login=root
           san_password=IPStor101
-          san_ip=192.168.2.22
+          san_ip=172.22.5.138
           fss_pool=1
 
           # Use post-extra because the tempest configuration file is
