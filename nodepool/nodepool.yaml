@@ -17,9 +17,9 @@ labels:
   - name: dsvm-slave
     image: dpc
     ready-script: set_iscsi_name.sh
-    min-ready: 2
+    min-ready: 1
     providers:
-      - name: ci-opstack01
+      - name: H12-82   #Openstack server name
 
 diskimages:
     - name: dpc
@@ -36,22 +36,22 @@ diskimages:
         DIB_IMAGE_CACHE: /opt/dib_cache
 
 providers:
-  - name: ci-opstack01
+  - name: H12-82
     username: 'admin'
     password: 'openstack'
-    auth-url: 'http://192.168.2.50:5000/v2.0'
+    auth-url: 'http://172.22.12.82:5000/v2.0'
     project-name: 'admin'
-    max-servers: 2
+    max-servers: 1
     boot-timeout: 1200
     launch-timeout: 3600
     keypair: 'jenkins'
-    pool: 'external'
+    pool: 'external_network'
     networks:
       #TODO: Enter the ID of the "internal" network on the provider
-      - net-id: '3341208a-8900-47de-9455-1f81c3b87cbe'
+      - net-id: 'e6be9ecb-126d-4324-808d-2319247b8140'
     images:
       - name: dpc
-        min-ram: 8192
+        min-ram: 4096 #8192
         diskimage: dpc
         username: jenkins
         private-key: '/home/nodepool/.ssh/id_rsa'
