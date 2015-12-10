@@ -5,11 +5,11 @@
 
 projects:
   # Project name
-  - name: openstack/cinder
+  - name: openstack-dev/ci-sandbox
     # Pipeline name
     silent:
       # Job name
-      - dsvm-cinder-fss-iscsi-custom
+      - dsvm-ci-sandbox-fss-iscsi-custom
 
 #
 # Modify the three values above based on the following:
@@ -93,11 +93,11 @@ pipelines:
           comment: (?i)^(Patch Set [0-9]+:)?( [\w\\+-]*)*(\n\n)?\s*recheck falconstor\s*$
     success:
       smtp:
-        to: openstack-ci@falconstor.com
-        from: openstack-ci@falconstor.com
+        to: johnny.wu@falconstor.com
+        from: johnny.wu@falconstor.com
         subject: 'CI job PASSED for {change.project} {change.number},{change.patchset}'
     failure:
       smtp:
-        to: openstack-ci@falconstor.com
-        from: openstack-ci@falconstor.com
+        to: johnny.wu@falconstor.com
+        from: johnny.wu@falconstor.com
         subject: 'CI job FAILED for {change.project} {change.number},{change.patchset}'
