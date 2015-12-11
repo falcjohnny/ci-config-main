@@ -48,7 +48,7 @@ providers:
     pool: 'public_network'
     networks:
       #TODO: Enter the ID of the "internal" network on the provider
-      - net-id: '7867fe82-9516-47dc-b315-a63bf76b6982'
+      - net-id: '9a21b814-3d86-45ab-8a14-e890da2e986d'
     images:
       - name: dpc
         min-ram: 8192
