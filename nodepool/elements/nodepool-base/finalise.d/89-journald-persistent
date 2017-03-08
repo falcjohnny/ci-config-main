@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2011-2013 OpenStack Foundation
+# Copyright (C) 2017 OpenStack Foundation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
 fi
 set -e
 
-# Unset the download cache for this invocation to prevent bleed from build host
-unset PIP_DOWNLOAD_CACHE
-
-/bin/bash /opt/build_git/openstack-infra/system-config/install_puppet.sh
-/bin/bash /opt/build_git/openstack-infra/system-config/install_modules.sh
-
-install -m 0755 -o root -g root $(dirname $0)/../bin/prepare-node /usr/local/bin
+# Journald default is to not persist logs to disk if /var/log/journal is
+# not present. Update the configuration to set storage to persistent which
+# will create /var/log/journal if necessary and store logs on disk. This
+# avoids the situation where test runs can fill the journald ring buffer
+# deleting older logs that may be important to the job.
+if [ -f /etc/systemd/journald.conf ] ; then
+    sed -i -e 's/#Storage=auto/Storage=persistent/' /etc/systemd/journald.conf
+fi

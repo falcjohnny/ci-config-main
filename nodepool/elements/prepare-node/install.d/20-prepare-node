@@ -21,10 +21,10 @@ if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
 fi
 set -e
 
-# Unset the download cache for this invocation to prevent bleed from build host
-unset PIP_DOWNLOAD_CACHE
+export SUDO='true'
+export THIN='true'
 
-/bin/bash /opt/build_git/openstack-infra/system-config/install_puppet.sh
-/bin/bash /opt/build_git/openstack-infra/system-config/install_modules.sh
+prepare-node
 
-install -m 0755 -o root -g root $(dirname $0)/../bin/prepare-node /usr/local/bin
+mkdir -p ~jenkins/cache/files
+mkdir -p ~jenkins/cache/pip

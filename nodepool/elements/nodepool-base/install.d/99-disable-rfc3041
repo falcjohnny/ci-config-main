@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2011-2013 OpenStack Foundation
+# Copyright 2016, Rackspace US, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,16 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# dib-lint: disable=setu setpipefail
+# dib-lint: disable=set setu setpipefail indent
 if [ ${DIB_DEBUG_TRACE:-0} -gt 0 ]; then
     set -x
 fi
 set -e
 
-# Unset the download cache for this invocation to prevent bleed from build host
-unset PIP_DOWNLOAD_CACHE
-
-/bin/bash /opt/build_git/openstack-infra/system-config/install_puppet.sh
-/bin/bash /opt/build_git/openstack-infra/system-config/install_modules.sh
-
-install -m 0755 -o root -g root $(dirname $0)/../bin/prepare-node /usr/local/bin
+# This will disable the disable Privacy extensions for IPv6 (RFC3041)
+cat > /etc/sysctl.d/99-cloudimg-ipv6.conf <<EOF
+# See https://bugs.launchpad.net/ubuntu/+source/procps/+bug/1068756
+net.ipv6.conf.all.use_tempaddr=0
+net.ipv6.conf.default.use_tempaddr=0
+EOF
