@@ -29,8 +29,7 @@ diskimages:
         - openstack-repos
         - puppet
         - nodepool-base
-        - zuul-worker
-        - prepare-node
+        - node-devstack
       release: xenial
       env-vars:
         TMPDIR: /opt/dib_tmp
