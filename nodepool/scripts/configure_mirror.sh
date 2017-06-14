@@ -27,6 +27,42 @@ source /etc/nodepool/provider
 NODEPOOL_MIRROR_HOST=${NODEPOOL_MIRROR_HOST:-mirror.$NODEPOOL_REGION.$NODEPOOL_CLOUD.openstack.org}
 NODEPOOL_MIRROR_HOST=$(echo $NODEPOOL_MIRROR_HOST|tr '[:upper:]' '[:lower:]')
 
+# Write the default value for NODEPOOL_MIRROR_HOST into the mirror_info
+# script first. This allows us to set a default while allowing consumers
+# to override values if necessary.
+echo "export NODEPOOL_MIRROR_HOST=\${NODEPOOL_MIRROR_HOST:-$NODEPOOL_MIRROR_HOST}" > /tmp/mirror_info.sh
+# Copy AFS Slug generation details into mirror_info.sh so that consumers
+# don't have to know about generating the wheel mirror's
+# distro-release-processor tuple.
+cat /usr/local/jenkins/slave_scripts/afs-slug.sh >> /tmp/mirror_info.sh
+# We write this as a heredoc so that the same information used by this script
+# is useable by others without double accounting. Note that the quoted EOF
+# means we don't do variable expansion.
+cat << "EOF" >> /tmp/mirror_info.sh
+export NODEPOOL_DEBIAN_MIRROR=${NODEPOOL_DEBIAN_MIRROR:-http://$NODEPOOL_MIRROR_HOST/debian}
+export NODEPOOL_PYPI_MIRROR=${NODEPOOL_PYPI_MIRROR:-http://$NODEPOOL_MIRROR_HOST/pypi/simple}
+export NODEPOOL_WHEEL_MIRROR=${NODEPOOL_WHEEL_MIRROR:-http://$NODEPOOL_MIRROR_HOST/wheel/$AFS_SLUG}
+export NODEPOOL_UBUNTU_MIRROR=${NODEPOOL_UBUNTU_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ubuntu}
+export NODEPOOL_CENTOS_MIRROR=${NODEPOOL_CENTOS_MIRROR:-http://$NODEPOOL_MIRROR_HOST/centos}
+export NODEPOOL_DEBIAN_OPENSTACK_MIRROR=${NODEPOOL_DEBIAN_OPENSTACK_MIRROR:-http://$NODEPOOL_MIRROR_HOST/debian-openstack}
+export NODEPOOL_EPEL_MIRROR=${NODEPOOL_EPEL_MIRROR:-http://$NODEPOOL_MIRROR_HOST/epel}
+export NODEPOOL_FEDORA_MIRROR=${NODEPOOL_FEDORA_MIRROR:-http://$NODEPOOL_MIRROR_HOST/fedora}
+export NODEPOOL_OPENSUSE_MIRROR=${NODEPOOL_OPENSUSE_MIRROR:-http://$NODEPOOL_MIRROR_HOST/opensuse}
+export NODEPOOL_CEPH_MIRROR=${NODEPOOL_CEPH_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ceph-deb-hammer}
+export NODEPOOL_UCA_MIRROR=${NODEPOOL_UCA_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ubuntu-cloud-archive}
+export NODEPOOL_MARIADB_MIRROR=${NODEPOOL_MARIADB_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ubuntu-mariadb}
+# Reverse proxy servers
+export NODEPOOL_DOCKER_REGISTRY_PROXY=${NODEPOOL_DOCKER_REGISTRY_PROXY:-http://$NODEPOOL_MIRROR_HOST:8081/registry-1.docker}
+export NODEPOOL_RDO_PROXY=${NODEPOOL_RDO_PROXY:-http://$NODEPOOL_MIRROR_HOST:8080/rdo}
+EOF
+
+sudo mkdir -p /etc/ci
+sudo mv /tmp/mirror_info.sh /etc/ci/mirror_info.sh
+source /etc/ci/mirror_info.sh
+
+LSBDISTID=$(lsb_release -is)
+LSBDISTCODENAME=$(lsb_release -cs)
+
 # Double check that when the node is made ready it is able
 # to resolve names against DNS.
 # NOTE(pabelanger): Because it is possible for nodepool to SSH into a node but
@@ -45,25 +81,6 @@ for COUNT in {1..10}; do
 done
 host $NODEPOOL_MIRROR_HOST
 
-# Generate the AFS Slug from the host system.
-source /usr/local/jenkins/slave_scripts/afs-slug.sh
-
-LSBDISTID=$(lsb_release -is)
-LSBDISTCODENAME=$(lsb_release -cs)
-
-NODEPOOL_DEBIAN_MIRROR=${NODEPOOL_DEBIAN_MIRROR:-http://$NODEPOOL_MIRROR_HOST/debian}
-NODEPOOL_PYPI_MIRROR=${NODEPOOL_PYPI_MIRROR:-http://$NODEPOOL_MIRROR_HOST/pypi/simple}
-NODEPOOL_WHEEL_MIRROR=${NODEPOOL_WHEEL_MIRROR:-http://$NODEPOOL_MIRROR_HOST/wheel/$AFS_SLUG}
-NODEPOOL_UBUNTU_MIRROR=${NODEPOOL_UBUNTU_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ubuntu}
-NODEPOOL_CENTOS_MIRROR=${NODEPOOL_CENTOS_MIRROR:-http://$NODEPOOL_MIRROR_HOST/centos}
-NODEPOOL_DEBIAN_OPENSTACK_MIRROR=${NODEPOOL_DEBIAN_OPENSTACK_MIRROR:-http://$NODEPOOL_MIRROR_HOST/debian-openstack}
-NODEPOOL_EPEL_MIRROR=${NODEPOOL_EPEL_MIRROR:-http://$NODEPOOL_MIRROR_HOST/epel}
-NODEPOOL_FEDORA_MIRROR=${NODEPOOL_FEDORA_MIRROR:-http://$NODEPOOL_MIRROR_HOST/fedora}
-NODEPOOL_CEPH_MIRROR=${NODEPOOL_CEPH_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ceph-deb-hammer}
-NODEPOOL_UCA_MIRROR=${NODEPOOL_UCA_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ubuntu-cloud-archive}
-NODEPOOL_MARIADB_MIRROR=${NODEPOOL_MARIADB_MIRROR:-http://$NODEPOOL_MIRROR_HOST/ubuntu-mariadb}
-NODEPOOL_NPM_MIRROR=${NODEPOOL_NPM_MIRROR:-http://$NODEPOOL_MIRROR_HOST/npm/}
-
 PIP_CONF="\
 [global]
 timeout = 60
@@ -76,14 +93,6 @@ PYDISTUTILS_CFG="\
 index_url = $NODEPOOL_PYPI_MIRROR
 allow_hosts = *.openstack.org"
 
-NPMRC="\
-registry = $NODEPOOL_NPM_MIRROR
-
-# Retry settings
-fetch-retries=10              # The number of times to retry getting a package.
-fetch-retry-mintimeout=60000  # Minimum fetch timeout: 1 minute (default 10 seconds)
-fetch-retry-maxtimeout=300000 # Maximum fetch timeout: 5 minute (default 1 minute)"
-
 UBUNTU_SOURCES_LIST="\
 deb $NODEPOOL_UBUNTU_MIRROR $LSBDISTCODENAME main universe
 deb $NODEPOOL_UBUNTU_MIRROR $LSBDISTCODENAME-updates main universe
@@ -95,6 +104,8 @@ CEPH_SOURCES_LIST="deb $NODEPOOL_CEPH_MIRROR $LSBDISTCODENAME main"
 UCA_SOURCES_LIST_LIBERTY="deb $NODEPOOL_UCA_MIRROR trusty-updates/liberty main"
 UCA_SOURCES_LIST_MITAKA="deb $NODEPOOL_UCA_MIRROR trusty-updates/mitaka main"
 UCA_SOURCES_LIST_NEWTON="deb $NODEPOOL_UCA_MIRROR xenial-updates/newton main"
+UCA_SOURCES_LIST_OCATA="deb $NODEPOOL_UCA_MIRROR xenial-updates/ocata main"
+UCA_SOURCES_LIST_PIKE="deb $NODEPOOL_UCA_MIRROR xenial-updates/pike main"
 
 MARIADB_SOURCES_LIST_10_0="deb $NODEPOOL_MARIADB_MIRROR/10.0 $LSBDISTCODENAME main"
 MARIADB_SOURCES_LIST_10_1="deb $NODEPOOL_MARIADB_MIRROR/10.1 $LSBDISTCODENAME main"
@@ -130,7 +141,9 @@ enabled=1
 metadata_expire=7d
 gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-\$releasever-\$basearch
-skip_if_unavailable=False"
+skip_if_unavailable=False
+deltarpm=False
+deltarpm_percentage=0"
 
 YUM_REPOS_FEDORA_UPDATES="\
 [updates]
@@ -141,7 +154,9 @@ enabled=1
 gpgcheck=1
 metadata_expire=6h
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-fedora-\$releasever-\$basearch
-skip_if_unavailable=False"
+skip_if_unavailable=False
+deltarpm=False
+deltarpm_percentage=0"
 
 YUM_REPOS_CENTOS_BASE="\
 [base]
@@ -169,9 +184,29 @@ YUM_REPOS_EPEL="\
 name=Extra Packages for Enterprise Linux \$releasever - \$basearch
 baseurl=$NODEPOOL_EPEL_MIRROR/\$releasever/\$basearch
 failovermethod=priority
-enabled=1
+enabled=0
 gpgcheck=1
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-\$releasever"
+
+ZYPPER_REPOS_OPENSUSE_BASE="\
+[repo-oss]
+name=repo-oss
+enabled=1
+autorefresh=0
+baseurl=$NODEPOOL_OPENSUSE_MIRROR/distribution/leap/\$releasever/repo/oss/
+type=yast2
+keeppackages=0
+"
+
+ZYPPER_REPOS_OPENSUSE_UPDATE="\
+[repo-update]
+name=repo-update
+enabled=1
+autorefresh=0
+baseurl=$NODEPOOL_OPENSUSE_MIRROR/update/leap/\$releasever/oss/
+type=rpm-md
+keeppackages=0
+"
 
 # Write global pip configuration
 echo "$PIP_CONF" >/tmp/pip.conf
@@ -184,20 +219,12 @@ sudo chmod 0644 /etc/pip.conf
 # Write jenkins user distutils/setuptools configuration used by easy_install
 echo "$PYDISTUTILS_CFG" | sudo tee /home/jenkins/.pydistutils.cfg
 sudo chown jenkins:jenkins /home/jenkins/.pydistutils.cfg
-# Write jenkins user npm configuration
-echo "$NPMRC" | sudo tee /home/jenkins/.npmrc
-sudo chown jenkins:jenkins /home/jenkins/.npmrc
 
 # Write zuul user distutils/setuptools configuration used by easy_install
 echo "$PYDISTUTILS_CFG" | sudo tee /home/zuul/.pydistutils.cfg
 sudo chown zuul:zuul /home/zuul/.pydistutils.cfg
-# Write zuul user npm configuration
-echo "$NPMRC" | sudo tee /home/zuul/.npmrc
-sudo chown zuul:zuul /home/zuul/.npmrc
 
-# NOTE(pabelanger): We don't actually have mirrors for ubuntu-precise, so skip
-# them.
-if [ "$LSBDISTID" == "Ubuntu" ] && [ "$LSBDISTCODENAME" != 'precise' ]; then
+if [ "$LSBDISTID" == "Ubuntu" ]; then
     echo "$UBUNTU_SOURCES_LIST" >/tmp/sources.list
     sudo mv /tmp/sources.list /etc/apt/
     sudo chown root:root /etc/apt/sources.list
@@ -221,6 +248,12 @@ if [ "$LSBDISTID" == "Ubuntu" ] && [ "$LSBDISTCODENAME" != 'precise' ]; then
     echo "$UCA_SOURCES_LIST_NEWTON" >/tmp/ubuntu-cloud-archive-newton.list
     sudo mv /tmp/ubuntu-cloud-archive-newton.list /etc/apt/sources.list.available.d/
 
+    echo "$UCA_SOURCES_LIST_OCATA" >/tmp/ubuntu-cloud-archive-ocata.list
+    sudo mv /tmp/ubuntu-cloud-archive-ocata.list /etc/apt/sources.list.available.d/
+
+    echo "$UCA_SOURCES_LIST_PIKE" >/tmp/ubuntu-cloud-archive-pike.list
+    sudo mv /tmp/ubuntu-cloud-archive-pike.list /etc/apt/sources.list.available.d/
+
     # Ubuntu Mariadb
     echo "$MARIADB_SOURCES_LIST_10_0" >/tmp/ubuntu-mariadb-10-0.list
     sudo mv /tmp/ubuntu-mariadb-10-0.list /etc/apt/sources.list.available.d/
@@ -231,10 +264,9 @@ if [ "$LSBDISTID" == "Ubuntu" ] && [ "$LSBDISTCODENAME" != 'precise' ]; then
     sudo chown root:root /etc/apt/sources.list.available.d/*
     sudo chmod 0644 /etc/apt/sources.list.available.d/*
 
-    if [ "$LSBDISTCODENAME" != 'precise' ] ; then
-        # Turn off multi-arch
-        sudo dpkg --remove-architecture i386
-    fi
+    # Turn off multi-arch
+    sudo dpkg --remove-architecture i386
+
     # Turn off checking of GPG signatures
     echo "$APT_CONF_UNAUTHENTICATED" >/tmp/99unauthenticated
     sudo mv /tmp/99unauthenticated /etc/apt/apt.conf.d/
@@ -286,4 +318,17 @@ elif [ "$LSBDISTID" == "Fedora" ]; then
     sudo mv /tmp/fedora-updates.repo /etc/yum.repos.d/
     sudo chown root:root /etc/yum.repos.d/*
     sudo chmod 0644 /etc/yum.repos.d/*
+
+elif [ "$LSBDISTID" == "openSUSE project" ]; then
+    echo "$ZYPPER_REPOS_OPENSUSE_BASE" > /tmp/repo-oss.repo
+    sudo mv /tmp/repo-oss.repo /etc/zypp/repos.d/
+    echo "$ZYPPER_REPOS_OPENSUSE_UPDATE" > /tmp/repo-update.repo
+    sudo mv /tmp/repo-update.repo /etc/zypp/repos.d/
+    sudo chown root:root /etc/zypp/repos.d/*
+    sudo chmod 0644 /etc/zypp/repos.d/*
+fi
+
+if [ "$LSBDISTID" == "Debian" ] || [ "$LSBDISTID" == "Ubuntu" ]; then
+    # Make sure our indexes are up to date.
+    sudo apt-get update
 fi
