@@ -23,7 +23,7 @@ labels:
 
 diskimages:
     - name: dpc
-          elements:
+      elements:
               - ubuntu-minimal
               - vm
               - simple-init
@@ -33,8 +33,8 @@ diskimages:
               - initialize-urandom
               - growroot
               - infra-package-needs
-          release: xenial
-          env-vars:
+      release: xenial
+      env-vars:
               TMPDIR: /opt/dib_tmp
               DIB_CHECKSUM: '1'
               DIB_IMAGE_CACHE: /opt/dib_cache
